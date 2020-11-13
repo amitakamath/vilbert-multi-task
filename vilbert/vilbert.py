@@ -1608,7 +1608,7 @@ class VILBertForVLTasks(BertPreTrainedModel):
             config, self.bert.embeddings.word_embeddings.weight
         )
         self.vil_prediction = SimpleClassifier(
-            config.bi_hidden_size, config.bi_hidden_size * 2, 3129, 0.5
+            config.bi_hidden_size, config.bi_hidden_size * 2, 3130, 0.5
         )
         self.vil_prediction_gqa = SimpleClassifier(
             config.bi_hidden_size, config.bi_hidden_size * 2, 1533, 0.5
