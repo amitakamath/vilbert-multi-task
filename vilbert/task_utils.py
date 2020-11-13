@@ -119,6 +119,8 @@ def ForwardModelsVal(args, task_cfg, device, task_id, batch, model, task_losses)
     )
 
     if task_cfg[task_id]["type"] == "VL-classifier":
+        z = torch.Tensor([float(t.sum()==0) for t in target]).resize(len(target), 1).cuda(device=device)
+        target = torch.cat((target, z),1)
         loss = task_losses[task_id](vil_prediction, target)
         loss = loss.mean() * target.size(1)
         batch_score = compute_score_with_logits(vil_prediction, target).sum()
@@ -323,6 +325,13 @@ def ForwardModelsTrain(
 
     # for different task, we use different output to calculate the loss.
     if task_cfg[task_id]["type"] == "VL-classifier":
+        #import pdb; pdb.set_trace()
+        # We want to set score[unk] to 1 if the other scores are all 0
+        # so int(bool(row-sum))
+        #z = torch.zeros(len(target), 1)
+        #pdb.set_trace()
+        z = torch.Tensor([float(t.sum()==0) for t in target]).resize(len(target), 1).cuda(device=device)
+        target = torch.cat((target, z),1)
         loss = task_losses[task_id](vil_prediction, target)
         loss = loss.mean() * target.size(1)
         batch_score = compute_score_with_logits(vil_prediction, target).sum() / float(
@@ -616,6 +625,7 @@ def LoadDatasetEval(args, task_cfg, ids):
 
 
 def compute_score_with_logits(logits, labels):
+    #pdb.set_trace()
     logits = torch.max(logits, 1)[1].data  # argmax
     one_hots = torch.zeros(*labels.size()).cuda()
     one_hots.scatter_(1, logits.view(-1, 1), 1)
