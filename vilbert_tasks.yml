@@ -11,7 +11,7 @@ TASK1:
   val_annotations_jsonpath: ''
   max_seq_length: 23
   max_region_num: 101
-  batch_size: 128
+  batch_size: 64
   eval_batch_size: 1024
   train_split: trainval
   val_split: minval
@@ -175,7 +175,7 @@ TASK10:
   val_annotations_jsonpath: ''
   max_seq_length: 20
   max_region_num: 101
-  batch_size: 256
+  batch_size: 64 #256
   eval_batch_size: 1024
   train_split: train
   val_split: val
