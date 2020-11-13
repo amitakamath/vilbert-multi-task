@@ -4,13 +4,16 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
+import pdb
 import json
+import random
 import _pickle as cPickle
 import logging
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 from ._image_features_reader import ImageFeaturesH5Reader
 
@@ -34,7 +37,7 @@ def _create_entry(question, answer):
     return entry
 
 
-def _load_dataset(dataroot, name, clean_datasets):
+def _load_dataset(dataroot, name, clean_datasets, ans2label=None):
     """Load entries
 
     dataroot: root path of dataset
@@ -51,7 +54,43 @@ def _load_dataset(dataroot, name, clean_datasets):
         answers = cPickle.load(open(answer_path, "rb"))
         answers = sorted(answers, key=lambda x: x["question_id"])
 
-    elif name == "trainval":
+    elif 'gpv' in name:
+        data_path = os.path.join('/home/amitak/data/learning_phase_data/vqa/gpv_split', '{}.json'.format(name[3:]))  # 'gpvtrain' -> 'train'
+        data_path = os.path.join('/home/amitak/data/learning_phase_data/vqa/gpv_split', 'val.json')
+        gpv_data = json.load(open(data_path, 'r'))
+        entries = []
+        count = []
+        qcount = []
+
+        pdb.set_trace()
+
+        gold = {gpv_dict['question_id']: gpv_dict['answer'] for gpv_dict in gpv_data}
+        preds = json.load(open('/home/amitak/vilbert-multi-task/save/CocoVqa_val_predictions.json', 'r'))
+        wrong_preds = {int(k): v['answer'] for k, v in preds.items() if v['answer'] != gold[int(k)]}
+        unk_preds = {int(k): v['answer'] for k, v in preds.items() if v['answer'] == '__unk__'}
+
+        for gpv_dict in gpv_data:
+            labels = [ans2label[gpv_dict['answer']]] \
+                    if gpv_dict['answer'] in ans2label else []
+            if labels == []:
+                count.append(gpv_dict['answer'])
+                qcount.append(gpv_dict['question_id'])
+            entry = {
+                'question_id': gpv_dict['question_id'],
+                'image_id': gpv_dict['image']['image_id'],
+                'question': gpv_dict['query'],
+                'answer':   {
+                    'labels': labels,
+                    'scores': [1]
+                    }
+                }
+            entries.append(entry)
+        wrong_overlap = [x for x in qcount if x in wrong_preds.keys()]
+        unk_overlap = [x for x in qcount if x in unk_preds.keys()]
+        #pdb.set_trace()
+        return entries
+
+    elif name == "trainval":  # VQA train
         question_path_train = os.path.join(
             dataroot, "v2_OpenEnded_mscoco_%s2014_questions.json" % "train"
         )
@@ -76,7 +115,7 @@ def _load_dataset(dataroot, name, clean_datasets):
         questions = questions_train + questions_val[:-3000]
         answers = answers_train + answers_val[:-3000]
 
-    elif name == "minval":
+    elif name == "minval":  # VQA val
         question_path_val = os.path.join(
             dataroot, "v2_OpenEnded_mscoco_%s2014_questions.json" % "val"
         )
@@ -206,16 +245,60 @@ class VQAClassificationDataset(Dataset):
             cache_path = os.path.join(
                 dataroot,
                 "cache",
-                task + "_" + split + "_" + str(max_seq_length) + clean_train + ".pkl",
+                #task + "_" + split + "_" + str(max_seq_length) + clean_train + ".pkl",
+                task + "_" + "trainval" + "_" + str(max_seq_length) + clean_train + ".pkl",
             )
         if not os.path.exists(cache_path):
-            self.entries = _load_dataset(dataroot, split, clean_datasets)
+            #pdb.set_trace()
+            if 'gpv' in split:
+                self.entries = _load_dataset(dataroot, split, clean_datasets, self.ans2label)
+            else:
+                self.entries = _load_dataset(dataroot, split, clean_datasets)
+            #pdb.set_trace()
             self.tokenize(max_seq_length)
             self.tensorize()
             cPickle.dump(self.entries, open(cache_path, "wb"))
         else:
             logger.info("Loading from %s" % cache_path)
             self.entries = cPickle.load(open(cache_path, "rb"))
+            if split == 'trainval':
+                print("\n\nTRAIN\n\n")
+                split_data = json.load(open('/home/amitak/data/learning_phase_data/vqa/gpv_split/train.json', 'r'))  # fix
+            else:
+                print("\n\nVAL\n\n")
+                split_data = json.load(open('/home/amitak/data/learning_phase_data/vqa/gpv_split/val.json', 'r'))
+            # Filter self.entries here
+            split_qids = [d['question_id'] for d in split_data]
+            entry_dict = {e['question_id']: e for e in self.entries}
+            self.entries = [entry_dict[qid] for qid in split_qids]
+            #pdb.set_trace()
+            self.ans2label['__unk__'] = 3129
+            self.label2ans.append('__unk__')
+            assert len(self.entries) == len(split_data)
+            print("LEN: {}".format(len(self.entries)))
+            """
+            # Is the score of 1-answer Qs always 1?
+            # Ans: 98% of the time -- other 2%, it's either
+            # 0.3, 0.6 or 0.9 :S 
+            count_many = 0
+            count_not_one = 0
+            for entry in self.entries:
+                if entry['answer']['labels'] is None:
+                    continue
+                num_answers = len(entry['answer']['labels'])
+                if num_answers > 1:
+                    count_many += 1
+                else:
+                    if entry['answer']['scores'][0].item() != 1:
+                        pdb.set_trace()
+                        count_not_one += 1
+            pdb.set_trace()
+            print("Find the ones you need")
+            #pdb.set_trace()
+            #self.entries = random.sample(self.entries, 1000)
+            #print()
+            """
+
 
     def tokenize(self, max_length=16):
         """Tokenizes the questions.
