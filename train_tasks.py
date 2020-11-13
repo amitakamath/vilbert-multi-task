@@ -199,7 +199,7 @@ def main():
     )
     parser.add_argument(
         "--clean_train_sets",
-        default=True,
+        default=False,
         type=bool,
         help="whether clean train sets for multitask data.",
     )
@@ -373,12 +373,13 @@ def main():
             num_labels=num_labels,
             default_gpu=default_gpu,
         )
-
+    #pdb.set_trace()
     task_losses = LoadLosses(args, task_cfg, args.tasks.split("-"))
 
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
 
     if args.freeze != -1:
+        #pdb.set_trace()
         bert_weight_name_filtered = []
         for name in bert_weight_name:
             if "embeddings" in name:
@@ -390,7 +391,8 @@ def main():
 
         optimizer_grouped_parameters = []
         for key, value in dict(model.named_parameters()).items():
-            if key[12:] in bert_weight_name_filtered:
+            #if key[12:] in bert_weight_name_filtered: 
+            if key[5:] in bert_weight_name_filtered:  # remove "bert."
                 value.requires_grad = False
 
         if default_gpu:
