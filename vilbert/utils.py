@@ -823,6 +823,7 @@ class PreTrainedModel(nn.Module):
         model_to_save.config.save_pretrained(save_directory)
 
         # If we save using the predefined names, we can load using `from_pretrained`
+        WEIGHTS_NAME = 'pytorch_model.bin'
         output_model_file = os.path.join(save_directory, WEIGHTS_NAME)
 
         torch.save(model_to_save.state_dict(), output_model_file)
@@ -888,11 +889,13 @@ class PreTrainedModel(nn.Module):
             ]
         elif os.path.isdir(pretrained_model_name_or_path):
             if from_tf:
+                TF_WEIGHTS_NAME = "model.ckpt"
                 # Directly load from a TensorFlow checkpoint
                 archive_file = os.path.join(
                     pretrained_model_name_or_path, TF_WEIGHTS_NAME + ".index"
                 )
             else:
+                WEIGHTS_NAME = "pytorch_model.bin"
                 archive_file = os.path.join(pretrained_model_name_or_path, WEIGHTS_NAME)
         else:
             if from_tf:
