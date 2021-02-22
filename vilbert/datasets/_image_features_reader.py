@@ -42,7 +42,7 @@ class ImageFeaturesH5Reader(object):
     def __init__(self, features_path: str, in_memory: bool = False):
         self.features_path = features_path
         self._in_memory = in_memory
-
+        #pdb.set_trace()
         # with h5py.File(self.features_h5path, "r", libver='latest', swmr=True) as features_h5:
         # self._image_ids = list(features_h5["image_ids"])
         # If not loaded in memory, then list of None.
