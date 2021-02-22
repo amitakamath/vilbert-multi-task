@@ -334,27 +334,6 @@ def ForwardModelsTrain(
         #pdb.set_trace()
         z = torch.Tensor([float(t.sum()==0) for t in target]).resize(len(target), 1).cuda(device=device)
         target = torch.cat((target, z),1)
-        """
-        # Find rows of target with >1 non-0 value and zero out
-        # all but one
-        #import pdb; pdb.set_trace()
-        nonzero_indices = torch.nonzero(target)
-        nonzero_dict = {}
-        for row, col in nonzero_indices:
-            if row.item() not in nonzero_dict:
-                if row.item() > 0 and len(nonzero_dict[row.item()-1]) > 1:
-                    chosen = np.random.choice(nonzero_dict[row.item()-1])
-                    mask = torch.zeros(len(target[row.item()])).cuda(device=device)
-                    mask[chosen] = 1
-                    target[row.item()-1] *= mask
-                nonzero_dict[row.item()] = [col.item()]
-            else:
-                nonzero_dict[row.item()].append(col.item())
-        chosen = np.random.choice(nonzero_dict[row.item()-1])
-        mask = torch.zeros(len(target[row.item()])).cuda(device=device)
-        mask[chosen] = 1
-        target[row.item()-1] *= mask
-        """
         # Sample indices you want to keep
         keep_indices = torch.multinomial(target, 1).cuda(device=device)
         # Set target to a tensor of zeros, with 1s at the above indices

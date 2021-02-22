@@ -217,7 +217,6 @@ def main():
         action="store_true",
         help="whether to use task specific tokens for the multi-task learning.",
     )
-
     args = parser.parse_args()
     with open("vilbert_tasks.yml", "r") as f:
         task_cfg = edict(yaml.safe_load(f))

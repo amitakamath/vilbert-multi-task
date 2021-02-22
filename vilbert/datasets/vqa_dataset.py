@@ -55,6 +55,7 @@ def _load_dataset(dataroot, name, clean_datasets, ans2label=None):
         answers = sorted(answers, key=lambda x: x["question_id"])
 
     elif 'gpv' in name:
+        raise Exception("wut")
         data_path = os.path.join('/home/amitak/data/learning_phase_data/vqa/gpv_split', '{}.json'.format(name[3:]))  # 'gpvtrain' -> 'train'
         data_path = os.path.join('/home/amitak/data/learning_phase_data/vqa/gpv_split', 'val.json')
         gpv_data = json.load(open(data_path, 'r'))
@@ -62,7 +63,7 @@ def _load_dataset(dataroot, name, clean_datasets, ans2label=None):
         count = []
         qcount = []
 
-        pdb.set_trace()
+        #pdb.set_trace()
 
         gold = {gpv_dict['question_id']: gpv_dict['answer'] for gpv_dict in gpv_data}
         preds = json.load(open('/home/amitak/vilbert-multi-task/save/CocoVqa_val_predictions.json', 'r'))
@@ -91,6 +92,7 @@ def _load_dataset(dataroot, name, clean_datasets, ans2label=None):
         return entries
 
     elif name == "trainval":  # VQA train
+        #import pdb; pdb.set_trace()
         question_path_train = os.path.join(
             dataroot, "v2_OpenEnded_mscoco_%s2014_questions.json" % "train"
         )
@@ -249,7 +251,7 @@ class VQAClassificationDataset(Dataset):
                 task + "_" + "trainval" + "_" + str(max_seq_length) + clean_train + ".pkl",
             )
         if not os.path.exists(cache_path):
-            #pdb.set_trace()
+            pdb.set_trace()
             if 'gpv' in split:
                 self.entries = _load_dataset(dataroot, split, clean_datasets, self.ans2label)
             else:
@@ -263,7 +265,9 @@ class VQAClassificationDataset(Dataset):
             self.entries = cPickle.load(open(cache_path, "rb"))
             if split == 'trainval':
                 print("\n\nTRAIN\n\n")
-                split_data = json.load(open('/home/amitak/data/learning_phase_data/vqa/gpv_split/train.json', 'r'))  # fix
+                split_data = json.load(open('/home/amitak/data/learning_phase_data/vqa/gpv_split/train.json', 'r')) 
+                new_pickle = cPickle.load(open('/home/amitak/vilbert-multi-task/datasets/VQA/cache/new_train_target.pkl', 'rb'))
+                new_pickle += cPickle.load(open('/home/amitak/vilbert-multi-task/datasets/VQA/cache/new_val_target.pkl', 'rb'))
             else:
                 print("\n\nVAL\n\n")
                 split_data = json.load(open('/home/amitak/data/learning_phase_data/vqa/gpv_split/val.json', 'r'))
@@ -276,28 +280,11 @@ class VQAClassificationDataset(Dataset):
             self.label2ans.append('__unk__')
             assert len(self.entries) == len(split_data)
             print("LEN: {}".format(len(self.entries)))
-            """
-            # Is the score of 1-answer Qs always 1?
-            # Ans: 98% of the time -- other 2%, it's either
-            # 0.3, 0.6 or 0.9 :S 
-            count_many = 0
-            count_not_one = 0
-            for entry in self.entries:
-                if entry['answer']['labels'] is None:
-                    continue
-                num_answers = len(entry['answer']['labels'])
-                if num_answers > 1:
-                    count_many += 1
-                else:
-                    if entry['answer']['scores'][0].item() != 1:
-                        pdb.set_trace()
-                        count_not_one += 1
-            pdb.set_trace()
-            print("Find the ones you need")
-            #pdb.set_trace()
-            #self.entries = random.sample(self.entries, 1000)
-            #print()
-            """
+            # Change answers here if random:
+            if split == 'trainval':
+                pickle_dict = {p['question_id']: {'labels': torch.tensor(p['labels']), 'scores': torch.Tensor(p['scores'])} for p in new_pickle}
+                for e in self.entries:
+                    e['answer'] = pickle_dict[e['question_id']]
 
 
     def tokenize(self, max_length=16):
